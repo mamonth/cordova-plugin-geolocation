@@ -52,19 +52,12 @@ public class GeoBroker extends CordovaPlugin {
      * @param callbackContext	The callback id used when calling back into JavaScript.
      * @return 			True if the action was valid, or false if not.
      */
-    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+    public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
         if (locationManager == null) {
             locationManager = (LocationManager) this.cordova.getActivity().getSystemService(Context.LOCATION_SERVICE);
         }
         if ( locationManager.isProviderEnabled( LocationManager.GPS_PROVIDER ) ||
                 locationManager.isProviderEnabled( LocationManager.NETWORK_PROVIDER )) {
-            if (networkListener == null) {
-                networkListener = new NetworkListener(locationManager, this);
-            }
-            if (gpsListener == null) {
-                gpsListener = new GPSListener(locationManager, this);
-            }
-
 
             if (action.equals("getLocation")) {
 

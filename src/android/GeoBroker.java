@@ -61,38 +61,38 @@ public class GeoBroker extends CordovaPlugin {
 
             if (action.equals("getLocation")) {
 
-                final boolean enableHighAccuracy    = args.getBoolean(0);
-                final int maximumAge                = args.getInt(1);
-                final int time                      = args.optInt(2, 60000);
-                final GeoBroker self                = this;
-
-                cordova.getThreadPool().execute(new Runnable() {
-                    public void run() {
-                        Location last = self.locationManager.getLastKnownLocation((enableHighAccuracy ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER));
-
-                        // Check if we can use lastKnownLocation to get a quick reading and use less battery
-                        if (last != null && (System.currentTimeMillis() - last.getTime()) <= maximumAge) {
-
-                            PluginResult result = new PluginResult(PluginResult.Status.OK, self.returnLocationJSON(last) );
-                            callbackContext.sendPluginResult(result);
-                        } else {
-
-                            self.getCurrentLocation( callbackContext, enableHighAccuracy, time );
-                        }
-                    }
-                });
+//                final boolean enableHighAccuracy    = args.getBoolean(0);
+//                final int maximumAge                = args.getInt(1);
+//                final int time                      = args.optInt(2, 60000);
+//                final GeoBroker self                = this;
 //
-//                boolean enableHighAccuracy = args.getBoolean(0);
-//                int maximumAge = args.getInt(1);
+//                cordova.getThreadPool().execute(new Runnable() {
+//                    public void run() {
+//                        Location last = self.locationManager.getLastKnownLocation((enableHighAccuracy ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER));
 //
-//                Location last = this.locationManager.getLastKnownLocation((enableHighAccuracy ? LocationManager.GPS_PROVIDER: LocationManager.NETWORK_PROVIDER));
-//                // Check if we can use lastKnownLocation to get a quick reading and use less battery
-//                if (last != null && (System.currentTimeMillis() - last.getTime()) <= maximumAge) {
-//                    PluginResult result = new PluginResult(PluginResult.Status.OK, this.returnLocationJSON(last));
-//                    callbackContext.sendPluginResult(result);
-//                } else {
-//                    this.getCurrentLocation(callbackContext, enableHighAccuracy, args.optInt(2, 60000));
-//                }
+//                        // Check if we can use lastKnownLocation to get a quick reading and use less battery
+//                        if (last != null && (System.currentTimeMillis() - last.getTime()) <= maximumAge) {
+//
+//                            PluginResult result = new PluginResult(PluginResult.Status.OK, self.returnLocationJSON(last) );
+//                            callbackContext.sendPluginResult(result);
+//                        } else {
+//
+//                            self.getCurrentLocation( callbackContext, enableHighAccuracy, time );
+//                        }
+//                    }
+//                });
+
+                boolean enableHighAccuracy = args.getBoolean(0);
+                int maximumAge = args.getInt(1);
+
+                Location last = this.locationManager.getLastKnownLocation((enableHighAccuracy ? LocationManager.GPS_PROVIDER: LocationManager.NETWORK_PROVIDER));
+                // Check if we can use lastKnownLocation to get a quick reading and use less battery
+                if (last != null && (System.currentTimeMillis() - last.getTime()) <= maximumAge) {
+                    PluginResult result = new PluginResult(PluginResult.Status.OK, this.returnLocationJSON(last));
+                    callbackContext.sendPluginResult(result);
+                } else {
+                    this.getCurrentLocation(callbackContext, enableHighAccuracy, args.optInt(2, 60000));
+                }
             }
             else if (action.equals("addWatch")) {
                 String id = args.getString(0);
@@ -215,17 +215,17 @@ public class GeoBroker extends CordovaPlugin {
     }
 
     public void win(Location loc, CallbackContext callbackContext, boolean keepCallback) {
-    	PluginResult result = new PluginResult(PluginResult.Status.OK, this.returnLocationJSON(loc));
-    	result.setKeepCallback(keepCallback);
+        PluginResult result = new PluginResult(PluginResult.Status.OK, this.returnLocationJSON(loc));
+        result.setKeepCallback(keepCallback);
         callbackContext.sendPluginResult(result);
     }
 
     /**
      * Location failed.  Send error back to JavaScript.
-     * 
+     *
      * @param code			The error code
      * @param msg			The error message
-     * @throws JSONException 
+     * @throws JSONException
      */
     public void fail(int code, String msg, CallbackContext callbackContext, boolean keepCallback) {
         JSONObject obj = new JSONObject();
@@ -250,11 +250,11 @@ public class GeoBroker extends CordovaPlugin {
 
     public boolean isGlobalListener(CordovaLocationListener listener)
     {
-    	if (gpsListener != null && networkListener != null)
-    	{
-    		return gpsListener.equals(listener) || networkListener.equals(listener);
-    	}
-    	else
-    		return false;
+        if (gpsListener != null && networkListener != null)
+        {
+            return gpsListener.equals(listener) || networkListener.equals(listener);
+        }
+        else
+            return false;
     }
 }

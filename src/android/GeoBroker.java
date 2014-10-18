@@ -18,6 +18,9 @@
 */
 package org.apache.cordova.geolocation;
 
+import android.util.Log;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.PluginResult;
@@ -38,7 +41,8 @@ import android.location.LocationManager;
 public class GeoBroker extends CordovaPlugin {
     private GPSListener gpsListener;
     private NetworkListener networkListener;
-    private LocationManager locationManager;    
+    private LocationManager locationManager;
+    private NewLocationListener newLocationListener;
 
     /**
      * Executes the request and returns PluginResult.
@@ -63,17 +67,39 @@ public class GeoBroker extends CordovaPlugin {
 
 
             if (action.equals("getLocation")) {
-                boolean enableHighAccuracy = args.getBoolean(0);
-                int maximumAge = args.getInt(1);
 
-                Location last = this.locationManager.getLastKnownLocation((enableHighAccuracy ? LocationManager.GPS_PROVIDER: LocationManager.NETWORK_PROVIDER));
-                // Check if we can use lastKnownLocation to get a quick reading and use less battery
-                if (last != null && (System.currentTimeMillis() - last.getTime()) <= maximumAge) {
-                    PluginResult result = new PluginResult(PluginResult.Status.OK, this.returnLocationJSON(last));
-                    callbackContext.sendPluginResult(result);
-                } else {
-                    this.getCurrentLocation(callbackContext, enableHighAccuracy, args.optInt(2, 60000));
-                }
+                final boolean enableHighAccuracy    = args.getBoolean(0);
+                final int maximumAge                = args.getInt(1);
+                final int time                      = args.optInt(2, 60000);
+                final GeoBroker self                = this;
+
+                cordova.getThreadPool().execute(new Runnable() {
+                    public void run() {
+                        Location last = self.locationManager.getLastKnownLocation((enableHighAccuracy ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER));
+
+                        // Check if we can use lastKnownLocation to get a quick reading and use less battery
+                        if (last != null && (System.currentTimeMillis() - last.getTime()) <= maximumAge) {
+
+                            PluginResult result = new PluginResult(PluginResult.Status.OK, self.returnLocationJSON(last) );
+                            callbackContext.sendPluginResult(result);
+                        } else {
+
+                            self.getCurrentLocation( callbackContext, enableHighAccuracy, time );
+                        }
+                    }
+                });
+//
+//                boolean enableHighAccuracy = args.getBoolean(0);
+//                int maximumAge = args.getInt(1);
+//
+//                Location last = this.locationManager.getLastKnownLocation((enableHighAccuracy ? LocationManager.GPS_PROVIDER: LocationManager.NETWORK_PROVIDER));
+//                // Check if we can use lastKnownLocation to get a quick reading and use less battery
+//                if (last != null && (System.currentTimeMillis() - last.getTime()) <= maximumAge) {
+//                    PluginResult result = new PluginResult(PluginResult.Status.OK, this.returnLocationJSON(last));
+//                    callbackContext.sendPluginResult(result);
+//                } else {
+//                    this.getCurrentLocation(callbackContext, enableHighAccuracy, args.optInt(2, 60000));
+//                }
             }
             else if (action.equals("addWatch")) {
                 String id = args.getString(0);
@@ -96,25 +122,56 @@ public class GeoBroker extends CordovaPlugin {
         return true;
     }
 
+    private LocationListenerInterface getLocationListener( boolean enableHighAccuracy ) {
+
+        int resCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable( this.cordova.getActivity() );
+
+        LocationListenerInterface locationListener;
+
+        // If Google Services is available - use them
+        if( ConnectionResult.SUCCESS == resCode ){
+
+            if( newLocationListener == null ){
+                newLocationListener = new NewLocationListener( this ); //enableHighAccuracy
+            }
+            Log.d( "Cordova GeoBroker", "getLocationListener: NewLocationListener " );
+            locationListener = newLocationListener;
+        }
+        // Else - using legacy code
+        else if( enableHighAccuracy ) {
+
+            if (gpsListener == null) {
+                gpsListener = new GPSListener(locationManager, this);
+            }
+            Log.d( "Cordova GeoBroker", "getLocationListener: GPSListener " );
+            locationListener = gpsListener;
+        } else {
+
+            if (networkListener == null) {
+                networkListener = new NetworkListener(locationManager, this);
+            }
+            Log.d( "Cordova GeoBroker", "getLocationListener: NetworkListener " );
+            locationListener = networkListener;
+        }
+
+        return locationListener;
+    }
+
     private void clearWatch(String id) {
-        this.gpsListener.clearWatch(id);
-        this.networkListener.clearWatch(id);
+
+        if( this.newLocationListener != null ) this.newLocationListener.clearWatch(id);
+        if( this.gpsListener != null ) this.gpsListener.clearWatch(id);
+        if( this.networkListener != null ) this.networkListener.clearWatch(id);
     }
 
     private void getCurrentLocation(CallbackContext callbackContext, boolean enableHighAccuracy, int timeout) {
-        if (enableHighAccuracy) {
-            this.gpsListener.addCallback(callbackContext, timeout);
-        } else {
-            this.networkListener.addCallback(callbackContext, timeout);
-        }
+
+        this.getLocationListener( enableHighAccuracy ).addCallback(callbackContext, timeout);
     }
 
     private void addWatch(String timerId, CallbackContext callbackContext, boolean enableHighAccuracy) {
-        if (enableHighAccuracy) {
-            this.gpsListener.addWatch(timerId, callbackContext);
-        } else {
-            this.networkListener.addWatch(timerId, callbackContext);
-        }
+
+        this.getLocationListener( enableHighAccuracy ).addWatch( timerId, callbackContext );
     }
 
     /**
@@ -129,6 +186,11 @@ public class GeoBroker extends CordovaPlugin {
         if (this.gpsListener != null) {
             this.gpsListener.destroy();
             this.gpsListener = null;
+        }
+
+        if (this.newLocationListener != null) {
+            this.newLocationListener.stop();
+            this.newLocationListener = null;
         }
     }
 

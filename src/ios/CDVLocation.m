@@ -18,7 +18,6 @@
  */
 
 #import "CDVLocation.h"
-#import <Cordova/NSArray+Comparisons.h>
 
 #pragma mark Constants
 
@@ -54,17 +53,13 @@
 
 @synthesize locationManager, locationData;
 
-- (CDVPlugin*)initWithWebView:(UIWebView*)theWebView
+- (void)pluginInitialize
 {
-    self = (CDVLocation*)[super initWithWebView:(UIWebView*)theWebView];
-    if (self) {
-        self.locationManager = [[CLLocationManager alloc] init];
-        self.locationManager.delegate = self; // Tells the location manager to send updates to this object
-        __locationStarted = NO;
-        __highAccuracyEnabled = NO;
-        self.locationData = nil;
-    }
-    return self;
+    self.locationManager = [[CLLocationManager alloc] init];
+    self.locationManager.delegate = self; // Tells the location manager to send updates to this object
+    __locationStarted = NO;
+    __highAccuracyEnabled = NO;
+    self.locationData = nil;
 }
 
 - (BOOL)isAuthorized
@@ -199,7 +194,7 @@
 - (void)getLocation:(CDVInvokedUrlCommand*)command
 {
     NSString* callbackId = command.callbackId;
-    BOOL enableHighAccuracy = [[command.arguments objectAtIndex:0] boolValue];
+    BOOL enableHighAccuracy = [[command argumentAtIndex:0] boolValue];
 
     if ([self isLocationServicesEnabled] == NO) {
         NSMutableDictionary* posError = [NSMutableDictionary dictionaryWithCapacity:2];
@@ -232,8 +227,8 @@
 - (void)addWatch:(CDVInvokedUrlCommand*)command
 {
     NSString* callbackId = command.callbackId;
-    NSString* timerId = [command.arguments objectAtIndex:0];
-    BOOL enableHighAccuracy = [[command.arguments objectAtIndex:1] boolValue];
+    NSString* timerId = [command argumentAtIndex:0];
+    BOOL enableHighAccuracy = [[command argumentAtIndex:1] boolValue];
 
     if (!self.locationData) {
         self.locationData = [[CDVLocationData alloc] init];
@@ -263,7 +258,7 @@
 
 - (void)clearWatch:(CDVInvokedUrlCommand*)command
 {
-    NSString* timerId = [command.arguments objectAtIndex:0];
+    NSString* timerId = [command argumentAtIndex:0];
 
     if (self.locationData && self.locationData.watchCallbacks && [self.locationData.watchCallbacks objectForKey:timerId]) {
         [self.locationData.watchCallbacks removeObjectForKey:timerId];
@@ -343,8 +338,10 @@
         [self returnLocationError:positionError withMessage:[error localizedDescription]];
     }
 
-    [self.locationManager stopUpdatingLocation];
-    __locationStarted = NO;
+    if (error.code != kCLErrorLocationUnknown) {
+      [self.locationManager stopUpdatingLocation];
+      __locationStarted = NO;
+    }
 }
 
 //iOS8+
